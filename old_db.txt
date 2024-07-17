@@ -1,0 +1,23 @@
+// Create Persona nodes
+CREATE (p1:Persona {name: "Gigi Marraffa", age: 30})
+CREATE (p2:Persona {name: "Mario Rossi", age: 25})
+
+// Create Cella nodes
+CREATE (c1:Cella {date: "2023-07-01", location: "Roma", id: "C1"})
+CREATE (c2:Cella {date: "2023-07-02", location: "Milano", id: "C2"})
+
+// Create relationships
+CREATE (p1)-[:COLLEGATO_A]->(c1)
+CREATE (p2)-[:COLLEGATO_A]->(c2)
+
+// Create duplicate nodes and relationships (as per the provided data)
+CREATE (p3:Persona {name: "Gigi Marraffa", age: 30})
+CREATE (p4:Persona {name: "Mario Rossi", age: 25})
+CREATE (c3:Cella {date: "2023-07-01", location: "Roma", id: "C1"})
+CREATE (c4:Cella {date: "2023-07-02", location: "Milano", id: "C2"})
+CREATE (p3)-[:COLLEGATO_A]->(c1)
+CREATE (p4)-[:COLLEGATO_A]->(c2)
+CREATE (p1)-[:COLLEGATO_A]->(c3)
+CREATE (p3)-[:COLLEGATO_A]->(c3)
+CREATE (p2)-[:COLLEGATO_A]->(c4)
+CREATE (p4)-[:COLLEGATO_A]->(c4)
