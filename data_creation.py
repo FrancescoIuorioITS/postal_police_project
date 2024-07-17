@@ -53,51 +53,44 @@ class CellCreationApp:
             print(f"An error occurred while creating cell {cell_id}: {str(e)}")
         return None
 
-    def generate_traditional_cells(self, city_name, city_center, city_radius, traditional_range=5):
-        for i in range(int(city_radius * 2 / traditional_range)):
-            for j in range(int(city_radius * 2 / traditional_range)):
-                lat = city_center[0] - city_radius + i * traditional_range
-                lon = city_center[1] - city_radius + j * traditional_range
-                if distance(city_center, (lat, lon)).km <= city_radius:
-                    cell_id = f"TRAD_{city_name}_{i}_{j}"
-                    self.create_cell(cell_id, lat, lon, "traditional")
+    def generate_cells_for_italy(self, total_cells=1500, ratio_5g=0.3):
+        cities = ["Rome", "Milan", "Naples", "Turin", "Palermo", "Genoa", "Bologna", "Florence", "Bari", "Catania"]
+        cells_per_city = total_cells // len(cities)
+        traditional_cells_per_city = int(cells_per_city * (1 - ratio_5g))
+        five_g_cells_per_city = cells_per_city - traditional_cells_per_city
 
-    def generate_5g_cells(self, city_name, city_center, city_radius, five_g_range=0.5):
-        num_5g_cells = int((city_radius * 2 / five_g_range) ** 2 * 0.3)  # 30% coverage
-        for i in range(num_5g_cells):
+        for city in cities:
+            self.generate_cells_for_city(city, traditional_cells_per_city, five_g_cells_per_city)
+
+        print(f"Generated approximately {total_cells} cell towers for {len(cities)} Italian cities.")
+
+    def generate_cells_for_city(self, city_name, traditional_cells, five_g_cells):
+        location = self.geolocator.geocode(f"{city_name}, Italy")
+        if location:
+            city_center = (location.latitude, location.longitude)
+            city_radius = 10  # km, adjust as needed
+            self.generate_traditional_cells(city_name, city_center, city_radius, traditional_cells)
+            self.generate_5g_cells(city_name, city_center, city_radius, five_g_cells)
+        else:
+            print(f"Could not locate {city_name}")
+
+    def generate_traditional_cells(self, city_name, city_center, city_radius, num_cells):
+        for i in range(num_cells):
             angle = random.uniform(0, 360)
             radius = random.uniform(0, city_radius)
             lat = city_center[0] + radius * math.cos(math.radians(angle))
             lon = city_center[1] + radius * math.sin(math.radians(angle))
+            cell_id = f"TRAD_{city_name}_{i}"
+            self.create_cell(cell_id, lat, lon, "traditional")
+
+    def generate_5g_cells(self, city_name, city_center, city_radius, num_cells):
+        for i in range(num_cells):
+            angle = random.uniform(0, 360)
+            radius = random.uniform(0, city_radius * 0.7)  # 5G cells typically have shorter range
+            lat = city_center[0] + radius * math.cos(math.radians(angle))
+            lon = city_center[1] + radius * math.sin(math.radians(angle))
             cell_id = f"5G_{city_name}_{i}"
             self.create_cell(cell_id, lat, lon, "5G")
-
-    def generate_cells_for_city(self, city_name):
-        try:
-            location = self.geolocator.geocode(f"{city_name}, Italy")
-            if not location:
-                print(f"Could not locate {city_name}")
-                return
-
-            city_center = (location.latitude, location.longitude)
-            city_radius = 10 
-
-            self.generate_traditional_cells(city_name, city_center, city_radius)
-            self.generate_5g_cells(city_name, city_center, city_radius)
-        except (GeocoderTimedOut, GeocoderServiceError) as e:
-            print(f"Geocoding error for {city_name}: {str(e)}")
-
-        city_center = (location.latitude, location.longitude)
-        city_radius = 10 
-
-        self.generate_traditional_cells(city_name, city_center, city_radius)
-        self.generate_5g_cells(city_name, city_center, city_radius)
-
-    def generate_cells_for_italy(self):
-        cities = ["Rome", "Milan", "Naples", "Turin", "Palermo", "Genoa", "Bologna", "Florence", "Bari", "Catania"]
-        for city in cities:
-            self.generate_cells_for_city(city)
-        print(f"Generated cell towers for {len(cities)} Italian cities.")
 
 @with_database
 class ConnectionCreationApp:
@@ -150,7 +143,7 @@ if __name__ == "__main__":
          ConnectionCreationApp(DataRetrievalApp()) as connection_creation:
          
 
-        #user_creation.generate_fake_people(100)
+        user_creation.generate_fake_people(7500)
         all_people = retrieval_app.get_all_people()
         print(f"Total people created: {len(all_people)}")
 
@@ -158,7 +151,7 @@ if __name__ == "__main__":
         phone = retrieval_app.get_phone_by_name(random_person)
         print(f"Random person: {random_person}, Phone: {phone}")
 
-        #cell_creation.generate_cells_for_italy()
+        cell_creation.generate_cells_for_italy(total_cells=1000, ratio_5g=0.3)
         all_cells = retrieval_app.get_all_cells()
         print(f"Total cells created: {len(all_cells)}")
 
@@ -166,7 +159,7 @@ if __name__ == "__main__":
         five_g_cells = [cell for cell in all_cells if cell['type'] == '5G']
         print(f"Traditional cells: {len(traditional_cells)}, 5G cells: {len(five_g_cells)}")
 
-        #connection_creation.generate_fake_connections(10000)
+        connection_creation.generate_fake_connections(25000)
         all_connections = retrieval_app.get_all_connections()
         print(f"Total connections created: {len(all_connections)}")
 
