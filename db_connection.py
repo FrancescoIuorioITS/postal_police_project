@@ -2,6 +2,7 @@ import os
 from dotenv import load_dotenv
 from neo4j import GraphDatabase
 from neo4j.exceptions import ServiceUnavailable
+from functools import wraps
 
 # Load environment variables from .env file
 load_dotenv()
@@ -47,6 +48,32 @@ class Neo4jConnector:
             if session is not None:
                 session.close()
         return response
+    
+
+class DatabaseContextManager:
+    def __init__(self, connector):
+        self.connector = connector
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.connector.close()
+
+def with_database(cls):
+    class Wrapped(cls):
+        def __init__(self, *args, **kwargs):
+            self.db_context = DatabaseContextManager(args[0])
+            super().__init__(self.db_context.connector, *args[1:], **kwargs)
+
+        def __enter__(self):
+            self.db_context.__enter__()
+            return self
+
+        def __exit__(self, *args):
+            return self.db_context.__exit__(*args)
+
+    return Wrapped
 
 # Example usage
 if __name__ == "__main__":
