@@ -63,8 +63,10 @@ class DatabaseContextManager:
 def with_database(cls):
     class Wrapped(cls):
         def __init__(self, *args, **kwargs):
-            self.db_context = DatabaseContextManager(args[0])
-            super().__init__(self.db_context.connector, *args[1:], **kwargs)
+            connector = Neo4jConnector()
+            self.db_context = DatabaseContextManager(connector)
+            self.connector = connector  # Add this line
+            super().__init__(*args, **kwargs)
 
         def __enter__(self):
             self.db_context.__enter__()
