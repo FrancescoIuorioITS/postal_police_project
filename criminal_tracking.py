@@ -37,26 +37,32 @@ class CriminalTrackingApp(DataRetrievalApp):
 
 
     def find_suspects_in_cell(self, cell_id, date, time):
-        all_connections = self.get_all_connections()
-        suspects = []
-        for connection in all_connections:
-            if (connection['cell_id'] == cell_id and
-                connection['date'] == date and
-                connection['time'] == time):
-                name = self.get_person_by_phone(connection['phone_number'])
-                suspects.append((name['name'], connection['phone_number']))
-        return suspects
+        query = """
+        MATCH (p:Person)-[:HAS_PHONE]->(ph:PhoneNumber)-[r:CONNECTED_TO]->(c:Cell {id: $cell_id})
+        WHERE r.start_date = $date AND r.start_time <= $time AND r.end_time >= $time
+        RETURN p.name AS name, ph.number AS phone_number
+        """
+        result = self.connector.execute_query(query, {"cell_id": cell_id, "date": date, "time": time})
+        return [(record['name'], record['phone_number']) for record in result]
+
 
     def find_suspects_near_location(self, latitude, longitude, date, time, radius):
-        all_cells = self.get_all_cells()
-        nearby_cells = [cell for cell in all_cells if distance((latitude, longitude), (cell['latitude'], cell['longitude'])).km <= radius]
-        
-        suspects = set()
-        for cell in nearby_cells:
-            cell_suspects = self.find_suspects_in_cell(cell['id'], date, time)
-            suspects.update(cell_suspects)
-        
-        return list(suspects)
+        query = """
+        MATCH (p:Person)-[:HAS_PHONE]->(ph:PhoneNumber)-[r:CONNECTED_TO]->(c:Cell)
+        WHERE r.start_date = $date AND r.start_time <= $time AND r.end_time >= $time
+        AND point.distance(point({latitude: c.latitude, longitude: c.longitude}), 
+                        point({latitude: $latitude, longitude: $longitude})) / 1000 <= $radius
+        RETURN DISTINCT p.name AS name, ph.number AS phone_number
+        """
+        result = self.connector.execute_query(query, {
+            "latitude": latitude,
+            "longitude": longitude,
+            "date": date,
+            "time": time,
+            "radius": radius
+        })
+        return [(record['name'], record['phone_number']) for record in result]
+
 
 if __name__ == "__main__":
     with CriminalTrackingApp() as app:
