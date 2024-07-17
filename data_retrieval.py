@@ -44,7 +44,6 @@ class DataRetrievalApp:
         return [{"phone_number": record["phone_number"], "cell_id": record["cell_id"], 
                 "date": record["date"], "time": record["time"]} for record in result]
 
-
     def get_connections_by_phone(self, phone_number):
         query = """
         MATCH (ph:PhoneNumber {number: $phone_number})-[r:CONNECTED_TO]->(c:Cell)
@@ -53,6 +52,36 @@ class DataRetrievalApp:
         """
         result = self.connector.execute_query(query, {"phone_number": phone_number})
         return [{"cell_id": record["cell_id"], "date": record["date"], "time": record["time"]} for record in result]
+
+    def get_connection_dates(self, phone_number):
+        query = """
+        MATCH (ph:PhoneNumber {number: $phone_number})-[r:CONNECTED_TO]->()
+        RETURN DISTINCT r.start_date AS start_date, r.end_date AS end_date
+        ORDER BY start_date, end_date
+        """
+        result = self.connector.execute_query(query, {"phone_number": phone_number})
+        return [(record['start_date'], record['end_date']) for record in result]
+
+    def get_connection_times(self, phone_number, date):
+        query = """
+        MATCH (ph:PhoneNumber {number: $phone_number})-[r:CONNECTED_TO]->()
+        WHERE r.start_date <= $date AND r.end_date >= $date
+        RETURN r.start_time AS start_time, r.end_time AS end_time
+        ORDER BY start_time, end_time
+        """
+        result = self.connector.execute_query(query, {"phone_number": phone_number, "date": date})
+        return [(record['start_time'], record['end_time']) for record in result]
+
+    def get_connection_coordinates(self, phone_number, date, time):
+        query = """
+        MATCH (ph:PhoneNumber {number: $phone_number})-[r:CONNECTED_TO]->(c:Cell)
+        WHERE r.start_date <= $date AND r.end_date >= $date
+        AND r.start_time <= $time AND r.end_time >= $time
+        RETURN c.latitude AS latitude, c.longitude AS longitude
+        """
+        result = self.connector.execute_query(query, {"phone_number": phone_number, "date": date, "time": time})
+        return [(record['latitude'], record['longitude']) for record in result]
+
 
 
 if __name__ == "__main__":
@@ -81,4 +110,28 @@ if __name__ == "__main__":
         all_connections = retrieval_app.get_all_connections()
         print(f"Total connections in database: {len(all_connections)}")
 
-    print("Data retrieval tests completed.")
+        all_phones = retrieval_app.get_all_phone_numbers()
+        
+        if all_phones:
+            random_phone = random.choice(all_phones)
+            
+            # Test get_connection_dates
+            dates = retrieval_app.get_connection_dates(random_phone)
+            print(f"Connection dates for phone {random_phone}: {dates[:5]}")
+            
+            if dates:
+                random_date = random.choice(dates)[0]
+                
+                # Test get_connection_times
+                times = retrieval_app.get_connection_times(random_phone, random_date)
+                print(f"Connection times for phone {random_phone} on {random_date}: {times[:5]}")
+                
+                if times:
+                    random_time = random.choice(times)[0]
+                    
+                    # Test get_connection_coordinates
+                    coordinates = retrieval_app.get_connection_coordinates(random_phone, random_date, random_time)
+                    print(f"Connection coordinates for phone {random_phone} on {random_date} at {random_time}: {coordinates[:5]}")
+        
+
+    print("Data retrieval tests completed successfully.")
