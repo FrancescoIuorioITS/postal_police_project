@@ -11,6 +11,13 @@ class CriminalTrackingApp(DataRetrievalApp):
         super().__init__()
         self.geolocator = Nominatim(user_agent="criminal_tracking_app")
 
+    def find_person_cell(self, name, date, time):
+        phone_number = self.get_phone_by_name(name)
+        print(f'(The phone number of {name} is {phone_number}')
+        if phone_number:
+            return self.get_cell_for_person_at_time(phone_number, date, time)
+        return None
+
 
     def find_person_location(self, name, date, time):
         phone_number = self.get_phone_by_name(name)

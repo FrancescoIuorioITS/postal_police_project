@@ -1,57 +1,81 @@
 from criminal_tracking import CriminalTrackingApp
+from datetime import datetime, date, timedelta
+from fuzzywuzzy import process
+import re, random
 
-def get_date_time_input():
-    date = input("Enter date (YYYY-MM-DD): ")
-    time = input("Enter time (HH:MM:SS): ")
-    return date, time
+def fuzzy_match(query, choices, limit=5):
+    return process.extract(query, choices, limit=limit)
 
+def regex_match(pattern, choices):
+    regex = re.compile(pattern, re.IGNORECASE)
+    return [choice for choice in choices if regex.search(choice)]
+
+def get_best_matches(query, choices):
+    regex_matches = regex_match(query, choices)
+    if regex_matches:
+        return regex_matches[:25]  # Limit to 25 matches
+    else:
+        fuzzy_matches = fuzzy_match(query, choices, limit=25)  # Limit fuzzy matches to 25
+        return [match[0] for match in fuzzy_matches]
+    
 def main():
-    app = CriminalTrackingApp()
+    with CriminalTrackingApp() as app:
+        while True:
+            print("\nCriminal Tracking System")
+            print("1. Find a suspect's location")
+            print("2. Find suspects in a cell")
+            print("3. Find suspects near coordinates")
 
-    while True:
-        print("\nCriminal Tracking System")
-        print("1. Find a suspect's location")
-        print("2. Find suspects in a cell")
-        print("3. Find suspects near coordinates")
-        print("4. Exit")
+            choice = input("Enter your choice (1-3): ")
 
-        choice = input("Enter your choice (1-4): ")
+            if choice == '1':
+                name_query = input("Enter suspect's name (or part of the name, use regex for advanced search): ")
+                all_people = app.get_all_people()
+                matches = get_best_matches(name_query, all_people)
+                if matches:
+                    print("Matching names:")
+                    for i, name in enumerate(matches, 1):
+                        print(f"{i}. {name}")
+                    selection = input("Select a number or press Enter to search for the top match: ")
+                    if selection.isdigit() and 1 <= int(selection) <= len(matches):
+                        name = matches[int(selection)-1]
+                    else:
+                        name = matches[0]
+                else:
+                    print("No matching names found.")
+                    continue
 
-        if choice == '1':
-            name = input("Enter suspect's name: ")
-            date, time = get_date_time_input()
-            locations = app.find_person_location(name, date, time)
-            if locations:
-                for lat, lon in locations:
-                    location_info = app.get_location_info(lat, lon)
-                    print(f"{name} was located {location_info} on {date} at {time}")
-            else:
-                print(f"No location found for {name} on {date} at {time}")
+                date = input("Enter exact date (YYYY-MM-DD): ")
+                time = input("Enter exact time (HH:MM:SS): ")
 
-        elif choice == '2':
-            cell_id = input("Enter cell ID: ")
-            date, time = get_date_time_input()
-            suspects = app.find_suspects_in_cell(cell_id, date, time)
-            print(f"Suspects in cell {cell_id} on {date} at {time}:")
-            for name, phone in suspects:
-                print(f"- {name} (Phone: {phone})")
+                cell = app.find_person_cell(name, date, time)
+                if cell:
+                    print(f"{name} was connected to cell {cell} on {date} at {time}")
+                else:
+                    print(f"No connection found for {name} at the specified time")
 
-        elif choice == '3':
-            lat = float(input("Enter latitude: "))
-            lon = float(input("Enter longitude: "))
-            radius = float(input("Enter search radius (km): "))
-            date, time = get_date_time_input()
-            suspects = app.find_suspects_near_location(lat, lon, date, time, radius)
-            print(f"Suspects within {radius}km of ({lat}, {lon}) on {date} at {time}:")
-            for name, phone in suspects:
-                print(f"- {name} (Phone: {phone})")
+            if choice == '2':
+                cell_id = input("Enter cell ID: ")
+                date = input("Enter exact date (YYYY-MM-DD): ")
+                time = input("Enter exact time (HH:MM:SS): ")
 
-        elif choice == '4':
-            print("Exiting the program.")
-            break
+                suspects = app.find_suspects_in_cell(cell_id, date, time)
+                if suspects:
+                    print(f"Suspects in cell {cell_id} on {date} at {time}:")
+                    for suspect in suspects:
+                        print(f"- {suspect}")
+                else:
+                    print(f"No suspects found in cell {cell_id} on {date} at {time}")
 
-        else:
-            print("Invalid choice. Please try again.")
+            if choice == '3':
+                latitude = float(input("Enter latitude: "))
+                longitude = float(input("Enter longitude: "))
+                date = input("Enter exact date (YYYY-MM-DD): ")
+                time = input("Enter exact time (HH:MM:SS): ")
+                radius = float(input("Enter search radius (in km): "))
 
+                suspects = app.find_suspects_near_location(latitude, longitude, date, time, radius)
+                print(f"Suspects within {radius}km of ({latitude}, {longitude}) on {date} at {time}:")
+                
 if __name__ == "__main__":
     main()

@@ -38,20 +38,32 @@ class DataRetrievalApp:
     def get_all_connections(self):
         query = """
         MATCH (ph:PhoneNumber)-[r:CONNECTED_TO]->(c:Cell)
-        RETURN ph.number AS phone_number, c.id AS cell_id, r.date AS date, r.time AS time
+        RETURN ph.number AS phone_number, c.id AS cell_id, 
+            r.start_date AS start_date, r.start_time AS start_time,
+            r.end_date AS end_date, r.end_time AS end_time
         """
         result = self.connector.execute_query(query)
-        return [{"phone_number": record["phone_number"], "cell_id": record["cell_id"], 
-                "date": record["date"], "time": record["time"]} for record in result]
+        return [{"phone_number": record["phone_number"], 
+                "cell_id": record["cell_id"], 
+                "start_date": record["start_date"],
+                "start_time": record["start_time"],
+                "end_date": record["end_date"],
+                "end_time": record["end_time"]} for record in result]
+
 
     def get_connections_by_phone(self, phone_number):
         query = """
         MATCH (ph:PhoneNumber {number: $phone_number})-[r:CONNECTED_TO]->(c:Cell)
-        RETURN c.id AS cell_id, r.date AS date, r.time AS time
-        ORDER BY r.date, r.time
+        RETURN c.id AS cell_id, r.start_date AS start_date, r.start_time AS start_time,
+            r.end_date AS end_date, r.end_time AS end_time
+        ORDER BY r.start_date, r.start_time
         """
         result = self.connector.execute_query(query, {"phone_number": phone_number})
-        return [{"cell_id": record["cell_id"], "date": record["date"], "time": record["time"]} for record in result]
+        return [{"cell_id": record["cell_id"], 
+                "start_date": record["start_date"], 
+                "start_time": record["start_time"],
+                "end_date": record["end_date"],
+                "end_time": record["end_time"]} for record in result]
 
     def get_connection_dates(self, phone_number):
         query = """
@@ -82,7 +94,19 @@ class DataRetrievalApp:
         result = self.connector.execute_query(query, {"phone_number": phone_number, "date": date, "time": time})
         return [(record['latitude'], record['longitude']) for record in result]
 
-
+    def get_cell_for_person_at_time(self, phone_number, date, time):
+        if not phone_number:
+            return None
+        
+        query = """
+        MATCH (ph:PhoneNumber {number: $phone_number})-[r:CONNECTED_TO]->(c:Cell)
+        WHERE r.start_date <= $date AND r.end_date >= $date
+        AND r.start_time <= $time AND r.end_time >= $time
+        RETURN c.id AS cell_id
+        """
+        result = self.connector.execute_query(query, {"phone_number": phone_number, "date": date, "time": time})
+        
+        return result[0]['cell_id'] if result and result[0] else None
 
 if __name__ == "__main__":
     with DataRetrievalApp() as retrieval_app:
@@ -115,7 +139,7 @@ if __name__ == "__main__":
         if all_phones:
             random_phone = random.choice(all_phones)
             
-            # Test get_connection_dates
+            # Test get_connection_dates<
             dates = retrieval_app.get_connection_dates(random_phone)
             print(f"Connection dates for phone {random_phone}: {dates[:5]}")
             

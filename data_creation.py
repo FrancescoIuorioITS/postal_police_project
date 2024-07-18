@@ -143,7 +143,7 @@ if __name__ == "__main__":
          ConnectionCreationApp(DataRetrievalApp()) as connection_creation:
          
 
-        user_creation.generate_fake_people(7500)
+        #user_creation.generate_fake_people(7500)
         all_people = retrieval_app.get_all_people()
         print(f"Total people created: {len(all_people)}")
 
@@ -151,7 +151,7 @@ if __name__ == "__main__":
         phone = retrieval_app.get_phone_by_name(random_person)
         print(f"Random person: {random_person}, Phone: {phone}")
 
-        cell_creation.generate_cells_for_italy(total_cells=1000, ratio_5g=0.3)
+        #cell_creation.generate_cells_for_italy(total_cells=1000, ratio_5g=0.3)
         all_cells = retrieval_app.get_all_cells()
         print(f"Total cells created: {len(all_cells)}")
 
@@ -159,7 +159,7 @@ if __name__ == "__main__":
         five_g_cells = [cell for cell in all_cells if cell['type'] == '5G']
         print(f"Traditional cells: {len(traditional_cells)}, 5G cells: {len(five_g_cells)}")
 
-        connection_creation.generate_fake_connections(25000)
+        connection_creation.generate_fake_connections(10000)
         all_connections = retrieval_app.get_all_connections()
         print(f"Total connections created: {len(all_connections)}")
 
